@@ -1,0 +1,348 @@
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.*;
+
+init with {:
+    //codice messo nel costruttore di parser
+    // String buffer used to store output program
+    outputBuffer = new StringBuffer();
+    examList = new HashMap<String,Float[]>();
+:};
+
+
+parser code {:
+	public int label = 0;
+	
+	public HashMap<String,Float[]> examList;
+	
+	
+	//Debug printing
+	public void printme(){
+		Object[] atmp = examList.keySet().toArray();
+		for(Object i: atmp){
+			Float []ccc = (Float[])examList.get(i);
+			System.out.println((String)i + "  Avg-------> " + ccc[0]);
+			System.out.println((String)i + "  Max-------> " + ccc[1]);
+			System.out.println((String)i + "  Min-------> " + ccc[2]);
+		}
+	} 
+
+	// It can be "stdout" to write output program to standard
+	// output or "file" to dump program in a file.
+	public static String dumpOutput;
+
+	// String buffer used to store output program
+	public StringBuffer outputBuffer;
+
+	// Generation of the next label number
+	public int genLabel(){
+	label++;
+	return label;
+	};
+
+    // Redefinition of error functions
+    public void report_error(String message, Object info) {
+        System.err.print("ERROR: Syntax error");
+        if (info instanceof Symbol)
+            if (((Symbol)info).left != -1){
+                int line = (((Symbol)info).left)+1;
+                int column = (((Symbol)info).right)+1;
+                System.err.print(" (linea "+line+", colonna "+column+"): ");
+            } else System.err.print(": ");
+        else System.err.print(": ");
+    }
+    public void syntax_error(Symbol cur_token){}
+
+    // Return actual symbol
+    public Symbol getToken() {
+        return ((Symbol)stack.elementAt(tos));
+    }
+
+    // Return semantic value of symbol in position (position)
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos+position)).value);
+    }
+
+    // Return the line number of actual symbol
+    public int getLine() {
+        if (((Symbol)stack.elementAt(tos)).left != -1){
+            return ((Symbol)stack.elementAt(tos)).left+1;
+        }else return -1;
+    }
+    // Return the column number of actual symbol
+    public int getColumn() {
+        if (((Symbol)stack.elementAt(tos)).left != -1){
+            return ((Symbol)stack.elementAt(tos)).right+1;
+        }else return -1;
+    }
+    :};
+
+
+action code {:
+    // Write a string in output
+    private void dump(String s){
+        if (parser.dumpOutput == "stdout"){
+            System.out.print(s);           
+        }else{
+            parser.outputBuffer.append(s);
+        }
+    }
+    private void dumpln(String s){
+        if (parser.dumpOutput == "stdout"){
+            System.out.println(s);           
+        }else{
+            parser.outputBuffer.append(s+"\n");
+        }
+    }
+
+:}
+
+
+// Terminal tokens
+terminal SEPARATOR, TOK1, TOK2, SO, SC, MINORE, MAGGIORE, PRINT, END_IF, C, S, CM, EXAM, SCORES, IF, THEN, ELSE, AND, OR, MIN, MAX, AVG, PNT;
+terminal Float MARK, MYFLOAT;
+terminal String QT;
+
+// Non terminal tokens
+non terminal spoint, 
+token2, 
+head, 
+exam,
+examlist,
+command,
+examcommand,
+ifcommand,
+printlista,
+printlistb,
+whatprint;
+
+non terminal Integer boolcheck, operat;
+non terminal Float[] studentmark;
+non terminal Float myvar;
+
+precedence left OR;
+precedence left AND;
+
+//BEGIN
+start with spoint;
+
+spoint ::= head SEPARATOR exam;
+
+head ::= token2 TOK1 S token2 TOK1 S token2;
+
+token2 ::= token2 TOK2 S| ;
+
+exam ::= command command command examlist | ;
+
+examlist ::= examlist command | ;
+
+command ::= EXAM examcommand | IF ifcommand;
+
+examcommand ::= QT:x SCORES C studentmark:y S
+		{:
+			String tmpstr = new String(x);
+			Float[] tmpfl = (Float[])y;
+			parser.examList.put(tmpstr,tmpfl);		
+		:}
+;
+
+studentmark ::= studentmark CM QT MARK:x
+		{:
+			Float []myf = new Float[5];
+			Float[] tmp = (Float[])parser.stack(-3);
+			
+			myf[3]=tmp[3]+1;
+			
+			myf[4]=tmp[4]+x;
+			
+			myf[0] = myf[4]/myf[3];
+			
+			if(tmp[1]<x){
+				myf[1] = x;
+			}
+			else {
+				myf[1] = tmp[1];
+			}
+			
+			if(tmp[2]>x){
+				myf[2] = x;
+			}
+			else {
+				myf[2] = tmp[2];
+			}
+			
+			myf[3]=tmp[3]+1;
+			
+			myf[4]=tmp[4]+x;
+			
+			
+			RESULT = myf;
+		:}
+		| 
+		QT MARK:x
+		{:
+			Float []myf = new Float[5];
+			myf[0] = x;
+			myf[1] = x;
+			myf[2] = x;
+			myf[3] = new Float(1);
+			myf[4] = x;
+			RESULT = myf;
+		:}		
+; 
+
+/////////////////
+/////
+////	IF THEN PART
+/////
+////////////////
+
+ifcommand ::= SO boolcheck SC THEN printlista ELSE printlistb  END_IF 	
+		|
+		SO boolcheck SC THEN printlista END_IF
+;
+		
+boolcheck ::= boolcheck:y OR boolcheck:x 
+		{:
+			Integer bl1 = (Integer)y;
+			Integer bl2 = (Integer)x;
+			
+			if( bl1==1 || bl2==1 )
+			{
+				RESULT = 1;
+			} else {
+				RESULT = 0;
+			}
+		:}
+		| 
+ 	     boolcheck:y AND boolcheck:x 
+	 	     {:
+			Integer bl1 = (Integer)y;
+			Integer bl2 = (Integer)x;
+			
+			if( bl1==1 && bl2==1 )
+			{
+				RESULT = 1;
+			} else {
+				RESULT = 0;
+			}
+	 	     :}
+	 	  |
+	 	operat:x
+	 		 {:
+				RESULT = x;	
+	 	     	:}	 	
+;
+
+operat ::=   myvar:x MINORE myvar:y
+			{:
+				
+				if(x<y){
+					RESULT = 1;
+				} else {
+					RESULT = 0;
+				}
+			:}
+			|
+			myvar:x MAGGIORE myvar:y 
+			{:
+				if(x>y){
+					RESULT = 1;
+				} else {
+					RESULT = 0;
+				}
+			:}
+;
+
+myvar ::= QT:y PNT AVG 
+		{:
+			Float []tmp = (Float[])parser.examList.get((String)y);
+			RESULT = tmp[0];
+		:}
+		| 
+		QT:y PNT MIN 
+		{:
+			Float []tmp = (Float[])parser.examList.get((String)y);
+			RESULT = tmp[2];
+		:}
+		| 
+		QT:y PNT MAX 
+		{:
+			Float []tmp = (Float[])parser.examList.get((String)y);
+			RESULT = tmp[1];
+		:}
+		| 
+		MYFLOAT:x
+		{:
+			RESULT = (Float)x;
+		:}
+;
+			
+
+
+printlista ::= printlista PRINT whatprint:x
+			{:
+				Integer bl = (Integer)parser.stack(-5);
+				if(bl==1){
+					System.out.println("" + (String)x);
+				}
+			:}
+		| 
+		PRINT whatprint:x
+			{:
+				Integer bl = (Integer)parser.stack(-4);
+				if(bl==1){
+					System.out.println("" + (String)x);
+				}
+			:}
+		
+;
+
+printlistb ::= printlistb PRINT whatprint:x
+			{:
+				Integer bl = (Integer)parser.stack(-7);
+				if(bl==0){
+					System.out.println("" + (String)x);
+				}
+			:}
+		| 
+		PRINT whatprint:x
+			{:
+				Integer bl = (Integer)parser.stack(-6);
+				if(bl==0){
+					System.out.println("" + (String)x);
+				}
+			:}
+		
+;
+
+
+whatprint ::= QT:y PNT MIN S
+			{:
+				Float []tmpi = (Float[])parser.examList.get((String)y);
+				String tmpp = new String("" + tmpi[2]);
+				RESULT = tmpp;		
+			:}
+		| 
+		QT:y PNT MAX S
+			{:
+				Float []tmpi = (Float[])parser.examList.get((String)y);
+				String tmpp = new String("" + tmpi[1]);
+				RESULT = tmpp;
+			:}
+		| 
+		QT:y PNT AVG S
+
+			{:
+				Float []tmpi = (Float[])parser.examList.get((String)y);
+				String tmpp = new String("" + tmpi[0]);
+				RESULT = tmpp;
+			:}
+		| 
+		QT:y S
+			{:
+				RESULT = (String)y;
+			:}
+		
+;
+

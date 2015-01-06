@@ -1,0 +1,28 @@
+2014/12/31_2015/06/06;
+auoooaaaao0A_BCBC_;
+oieaD_C_B_A;
+2014/12/31_2015/06/06;
+2014/12/31_2015/06/06; 2015/01/31_2015/02/28;
+
+####
+
+/* FALSE OR TRUE AND TURE = FALSE OR TRUE = TRUE */
+EXAM "FLC" SCORES : "Stefano" 22, "Giovanni" 20, "Giulia" 24;
+
+/*AVG: 22 MAX: 24 MIN: 20*/
+
+IF (3.0 > 5.0 OR 22.0 > "FLC".avg OR "FLC".max > "FLC".min AND "FLC".avg < 23.0 ) 
+THEN
+	PRINT "HARD exam:";
+	PRINT "FLC".avg;
+	PRINT "FLC".max;
+ELSE
+	PRINT "Easy exam:";
+	PRINT "FLC".avg;
+END_IF
+
+EXAM "XYZ" SCORES : "Stefano" 26, "Giulia" 20;
+
+IF("FLC".avg < 24.0 AND "XYZ".avg < "FLC".avg OR 5.0 > 4.9) THEN
+PRINT "Hard University";
+END_IF
